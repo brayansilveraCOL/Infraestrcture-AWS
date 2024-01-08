@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+
+  Environment:
+    Type: String
+    Description: 'Identifier of the Environment'
+
+  DBInstanceIdentifier:
+    Type: String
+    Description: 'Unique identifier for the MariaDB instance'
+    MinLength: 1
+    MaxLength: 63
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9-]*$'
+
+  SnapshotIdentifier:
+    Description: 'Identifier of the snapshot to restore from'
+    Type: String
+
+  SecurityGroupId:
+    Description: The ID of an existing Security Group
+    Type: 'AWS::EC2::SecurityGroup::Id'
+  
+  VPCBkSimulator:
+    Description: The ID of the existing Virtual Private Cloud (VPC)
+    Type: 'AWS::EC2::VPC::Id'
+  
+  AMISimulator:
+    Type: String
+    Description: 'Value AMI Simulator'
+    Default: ami-079db87dc4c10ac91
+    
+  KeyNameSimulator:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+  
+  S3BucketArtifact:
+    Description: Name Of bucket S3 Save artifact
+    Type: String
+
+Resources:
+  SSMAmiSimulator:
+      Type: AWS::SSM::Parameter
+      Properties:
+        Name:
+          Fn::Sub: /${Environment}/ami/simulator
+        Tier: Standard
+        Type: String
+        Value:
+          !Ref AMISimulator
+  SSMArtifactBucket:
+      Type: AWS::SSM::Parameter
+      Properties:
+        Name:
+          Fn::Sub: /config/${Environment}/infra/bucket/artifacts
+        Tier: Standard
+        Type: String
+        Value:
+          !Ref S3BucketArtifact
+  SecurityGroupBKsimulator:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupName: !Sub '${Environment}-bk-security-group'
+      GroupDescription: New Security Group based on existing one
+      VpcId: !Ref VPCBkSimulator
+      SecurityGroupIngress:
+        - IpProtocol: -1
+          SourceSecurityGroupId: !Ref SecurityGroupId
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          DestinationSecurityGroupId: !Ref SecurityGroupId
+
+  RDSStack:
+    Type: 'AWS::CloudFormation::Stack'
+    DependsOn: [SecurityGroupBKsimulator, SSMArtifactBucket]
+    Properties:
+      TemplateURL: !Sub 'https://{{resolve:ssm:/config/${Environment}/infra/bucket/artifacts}}.s3.${AWS::URLSuffix}.com/templates/RDSStack.yml'
+      Parameters:
+          ChildDBInstanceIdentifier: !Ref DBInstanceIdentifier
+          ChildSnapshotIdentifier: !Ref SnapshotIdentifier
+          ChildSecurityGroupId: !Ref SecurityGroupBKsimulator
+  
+  EC2Stack:
+    Type: 'AWS::CloudFormation::Stack'
+    DependsOn: [SecurityGroupBKsimulator, SSMAmiSimulator, SSMArtifactBucket]
+    Properties:
+      TemplateURL: 'https://{{resolve:ssm:/config/${Environment}/infra/bucket/artifacts}}.s3.${AWS::URLSuffix}.com/templates/EC2InstanceSimulatorStack.yml'
+      Parameters:
+        ChildKeyNameSimulator: !Ref KeyNameSimulator
+        ChildSecurityGroupId: !Ref SecurityGroupBKsimulator
+        ChildAmiSimulator: !GetAtt SSMAmiSimulator.Value

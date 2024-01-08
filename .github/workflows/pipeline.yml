@@ -1,0 +1,56 @@
+name: Pipeline Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+
+
+jobs:
+  set_variables:
+    name: "Set Environment Variables"
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    outputs:
+        github_env_name: ${{ inputs.environment }}
+        aws_stack_name: ${{ steps.set-environment.outputs.aws_stack_name }}
+        bucketname: ${{ steps.set-environment.outputs.bucketname }}
+    steps:
+      - name: Split environment name
+        uses: xom9ikk/split@v1
+        id: split
+        with:
+          string: ${{ inputs.environment }}
+          separator: "-"
+          limit: -1
+      - id: set-environment
+        env:
+          AWS_ENV_NAME: ${{ steps.split.outputs._0 }}
+        run: |
+            echo "aws_stack_name=bk-simulator" >> "$GITHUB_OUTPUT"
+            echo "bucketname=templates-cloud-formation-bk" >> "$GITHUB_OUTPUT"
+  
+  deploy:
+    runs-on: ubuntu-latest
+    needs: set_variables
+    environment: ${{ needs.set_variables.outputs.github_env_name }}
+    name: "Deploy-Builder-${{ needs.set_variables.outputs.github_env_name }}-pipelines"
+    env:
+      BUCKET: ${{ needs.set_variables.outputs.bucketname }}
+    steps:
+      - name: "Checkout"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Shallow clones should be disabled for a better relevancy of analysis
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: ${{ github.event.repository.name }}-deploy-pipelines-$ENVIRONMENT
+          aws-region: ${{ vars.AWS_REGION }}
+      - name: Deploy Pipeline
+        run: |
+          aws s3 cp ./templates/EC2InstanceSimulatorStack.yaml s3://${{ env.BUCKET }}/templates/EC2InstanceSimulatorStack.yaml
+          aws s3 cp ./templates/RDSStack.yaml s3://${{ env.BUCKET }}/templates/RDSStack.yaml
+          aws cloudformation deploy --template-file ./templates/TemplateEntry.yaml --stack-name $ENVIRONMENT-${{ needs.set_variables.outputs.aws_stack_name }}-pipelines --parameter-overrides Environment=$ENVIRONMENT --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM CAPABILITY_IAM

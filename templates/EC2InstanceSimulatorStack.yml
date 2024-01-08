@@ -1,0 +1,24 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Parameters:
+  ChildKeyNameSimulator:
+    Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
+    Type: 'AWS::EC2::KeyPair::KeyName'
+    ConstraintDescription: must be the name of an existing EC2 KeyPair.
+
+  ChildSecurityGroupId:
+    Description: The ID of an existing EC2 Security Group
+    Type: 'AWS::EC2::SecurityGroup::Id'
+  
+  ChildAmiSimulator:
+    Description: The ID of AMI Simulator
+    Type: 'String'
+
+Resources:
+  BKSimulatorQAInstance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref ChildAmiSimulator
+      InstanceType: t2.micro
+      KeyName: !Ref ChildKeyNameSimulator
+      SecurityGroupIds:
+        - !Ref ChildSecurityGroupId

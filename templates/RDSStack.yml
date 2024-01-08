@@ -1,0 +1,34 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+Parameters:
+  ChildDBInstanceIdentifier:
+    Type: String
+    Description: 'Unique identifier for the MariaDB instance'
+    MinLength: 1
+    MaxLength: 63
+    AllowedPattern: '^[a-zA-Z][a-zA-Z0-9-]*$'
+
+  ChildSnapshotIdentifier:
+    Type: String
+    Description: 'Identifier of the snapshot to restore from'
+  
+  ChildSecurityGroupId:
+    Type: 'AWS::EC2::SecurityGroup::Id'
+    Description: The ID of an existing Security Group
+
+Resources:
+  RestoreDBInstanceFromSnapshot:
+    Type: 'AWS::RDS::DBInstance'
+    Properties:
+      DBInstanceIdentifier: !Ref 'ChildDBInstanceIdentifier'
+      DBSnapshotIdentifier: !Ref 'ChildSnapshotIdentifier'
+      DBInstanceClass: 'db.t3.micro'
+      AllocatedStorage: 20
+      VPCSecurityGroups: 
+          - !Ref ChildSecurityGroupId
+      PubliclyAccessible: true
+
+Outputs:
+  DBEndpoint:
+    Description: 'Endpoint for the MariaDB instance'
+    Value: !GetAtt RestoreDBInstanceFromSnapshot.Endpoint.Address
