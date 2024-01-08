@@ -65,6 +65,5 @@ jobs:
       - name: Deploy
         run: |
           ls -l
-          aws s3 cp templates/EC2InstanceSimulatorStack.yaml s3://${{ env.BUCKET }}/templates/EC2InstanceSimulatorStack.yaml
-          aws s3 cp templates/RDSStack.yml s3://${{ env.BUCKET }}/templates/RDSStack.yaml
-          aws cloudformation deploy --template-file TemplateEntry.yaml --stack-name ${{ env.ENVIRONMENT }}-${{ needs.set_variables.outputs.aws_stack_name }}-pipelines --parameter-overrides Environment=${{ env.ENVIRONMENT }} DBInstanceIdentifier=database-${{ env.ENVIRONMENT }} SnapshotIdentifier=${{ env.SNAPSHOT }} S3BucketArtifact=${{ env.BUCKET }} KeyNameSimulator=${{ env.KEYNAME }} --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM CAPABILITY_IAM
+          cd ./templates
+          ls -l
