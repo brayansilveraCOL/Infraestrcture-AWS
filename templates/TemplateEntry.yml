@@ -96,7 +96,7 @@ Resources:
     Type: 'AWS::CloudFormation::Stack'
     DependsOn: [SecurityGroupBKsimulator, SSMArtifactBucket, SSMVPCSimulator, SSMSecurityGroup]
     Properties:
-      TemplateURL: 'https://templates-cloud-formation-bk.s3.amazonaws.com/templates/RDSStack.yml'
+      TemplateURL: !Sub 'https://${SSMArtifactBucket}.s3.amazonaws.com/templates/RDSStack.yml'
       Parameters:
           ChildDBInstanceIdentifier: !Ref DBInstanceIdentifier
           ChildSnapshotIdentifier: !Ref SnapshotIdentifier
@@ -106,7 +106,7 @@ Resources:
     Type: 'AWS::CloudFormation::Stack'
     DependsOn: [SecurityGroupBKsimulator, SSMAmiSimulator, SSMArtifactBucket, SSMVPCSimulator, SSMSecurityGroup]
     Properties:
-      TemplateURL: 'https://templates-cloud-formation-bk.s3.amazonaws.com/templates/EC2InstanceSimulatorStack.yml'
+      TemplateURL: !Sub 'https://${SSMArtifactBucket}.s3.amazonaws.com/templates/EC2InstanceSimulatorStack.yml'
       Parameters:
         ChildKeyNameSimulator: !Ref KeyNameSimulator
         ChildSecurityGroupId: !Ref SecurityGroupBKsimulator
