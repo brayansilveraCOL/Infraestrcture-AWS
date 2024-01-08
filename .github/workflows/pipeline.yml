@@ -7,7 +7,14 @@ on:
         required: true
         type: string
         description: Select the environment
-
+      snapshotIdenteifier:
+        required: true
+        type: string
+        description: Select the Snapshot Database
+      keyname:
+        required: true
+        type: string
+        description: Select the key name for EC2 instance
 
 jobs:
   set_variables:
@@ -18,6 +25,8 @@ jobs:
         github_env_name: ${{ inputs.environment }}
         aws_stack_name: ${{ steps.set-environment.outputs.aws_stack_name }}
         bucketname: ${{ steps.set-environment.outputs.bucketname }}
+        snapshot_database: ${{ inputs.snapshotIdenteifier }}
+        key_name: ${{ inputs.keyname }}
     steps:
       - name: Split environment name
         uses: xom9ikk/split@v1
@@ -40,6 +49,8 @@ jobs:
     name: "Deploy-Builder-${{ needs.set_variables.outputs.github_env_name }}-pipelines"
     env:
       BUCKET: ${{ needs.set_variables.outputs.bucketname }}
+      SNAPSHOT: ${{ needs.set_variables.outputs.snapshot_database }}
+      KEYNAME: ${{ needs.set_variables.outputs.key_name }}
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
@@ -54,4 +65,4 @@ jobs:
         run: |
           aws s3 cp ./templates/EC2InstanceSimulatorStack.yaml s3://${{ env.BUCKET }}/templates/EC2InstanceSimulatorStack.yaml
           aws s3 cp ./templates/RDSStack.yaml s3://${{ env.BUCKET }}/templates/RDSStack.yaml
-          aws cloudformation deploy --template-file ./templates/TemplateEntry.yaml --stack-name $ENVIRONMENT-${{ needs.set_variables.outputs.aws_stack_name }}-pipelines --parameter-overrides Environment=$ENVIRONMENT --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM CAPABILITY_IAM
+          aws cloudformation deploy --template-file ./templates/TemplateEntry.yaml --stack-name $ENVIRONMENT-${{ needs.set_variables.outputs.aws_stack_name }}-pipelines --parameter-overrides Environment=$ENVIRONMENT DBInstanceIdentifier=database-$ENVIRONMENT SnapshotIdentifier=${{ env.SNAPSHOT }} S3BucketArtifact=${{ env.BUCKET }} KeyNameSimulator=${{ env.KEYNAME }} --capabilities CAPABILITY_AUTO_EXPAND CAPABILITY_NAMED_IAM CAPABILITY_IAM

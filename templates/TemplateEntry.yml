@@ -20,19 +20,21 @@ Parameters:
   SecurityGroupId:
     Description: The ID of an existing Security Group
     Type: 'AWS::EC2::SecurityGroup::Id'
-  
+    Default: sg-0191ec34cc21523d6
+
   VPCBkSimulator:
     Description: The ID of the existing Virtual Private Cloud (VPC)
-    Type: 'AWS::EC2::VPC::Id'
+    Type: 'String'
+    Default: vpc-02ce562c4deeb740a
   
   AMISimulator:
     Type: String
     Description: 'Value AMI Simulator'
     Default: ami-079db87dc4c10ac91
-    
+
   KeyNameSimulator:
     Description: Name of an existing EC2 KeyPair to enable SSH access to the instance
-    Type: 'AWS::EC2::KeyPair::KeyName'
+    Type: 'String'
     ConstraintDescription: must be the name of an existing EC2 KeyPair.
   
   S3BucketArtifact:
@@ -58,22 +60,41 @@ Resources:
         Type: String
         Value:
           !Ref S3BucketArtifact
+  SSMVPCSimulator:
+      Type: AWS::SSM::Parameter
+      Properties:
+        Name:
+          Fn::Sub: /config/${Environment}/infra/vpc
+        Tier: Standard
+        Type: String
+        Value:
+          !Ref VPCBkSimulator
+  SSMSecurityGroup:
+      Type: AWS::SSM::Parameter
+      Properties:
+        Name:
+          Fn::Sub: /config/${Environment}/infra/SG
+        Tier: Standard
+        Type: String
+        Value:
+          !Ref SecurityGroupId
   SecurityGroupBKsimulator:
     Type: 'AWS::EC2::SecurityGroup'
+    DependsOn: ['SSMVPCSimulator', 'SSMSecurityGroup']
     Properties:
       GroupName: !Sub '${Environment}-bk-security-group'
       GroupDescription: New Security Group based on existing one
-      VpcId: !Ref VPCBkSimulator
+      VpcId: !GetAtt SSMVPCSimulator.Value
       SecurityGroupIngress:
         - IpProtocol: -1
-          SourceSecurityGroupId: !Ref SecurityGroupId
+          SourceSecurityGroupId: !GetAtt SSMSecurityGroup.Value
       SecurityGroupEgress:
         - IpProtocol: -1
-          DestinationSecurityGroupId: !Ref SecurityGroupId
+          DestinationSecurityGroupId: !GetAtt SSMSecurityGroup.Value
 
   RDSStack:
     Type: 'AWS::CloudFormation::Stack'
-    DependsOn: [SecurityGroupBKsimulator, SSMArtifactBucket]
+    DependsOn: [SecurityGroupBKsimulator, SSMArtifactBucket, SSMVPCSimulator, SSMSecurityGroup]
     Properties:
       TemplateURL: !Sub 'https://{{resolve:ssm:/config/${Environment}/infra/bucket/artifacts}}.s3.${AWS::URLSuffix}.com/templates/RDSStack.yml'
       Parameters:
@@ -83,7 +104,7 @@ Resources:
   
   EC2Stack:
     Type: 'AWS::CloudFormation::Stack'
-    DependsOn: [SecurityGroupBKsimulator, SSMAmiSimulator, SSMArtifactBucket]
+    DependsOn: [SecurityGroupBKsimulator, SSMAmiSimulator, SSMArtifactBucket, SSMVPCSimulator, SSMSecurityGroup]
     Properties:
       TemplateURL: 'https://{{resolve:ssm:/config/${Environment}/infra/bucket/artifacts}}.s3.${AWS::URLSuffix}.com/templates/EC2InstanceSimulatorStack.yml'
       Parameters:
