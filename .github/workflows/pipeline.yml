@@ -64,6 +64,7 @@ jobs:
           aws-region: ${{ vars.AWS_REGION }}
       - name: Deploy
         run: |
+          ls -l
           cd templates
           aws s3 cp EC2InstanceSimulatorStack.yaml s3://${{ env.BUCKET }}/templates/EC2InstanceSimulatorStack.yaml
           aws s3 cp RDSStack.yml s3://${{ env.BUCKET }}/templates/RDSStack.yaml
