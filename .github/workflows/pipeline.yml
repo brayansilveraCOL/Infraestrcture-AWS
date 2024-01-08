@@ -1,11 +1,12 @@
 name: Pipeline Deploy
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
       environment:
         required: true
         type: string
+        description: Select the environment
 
 
 jobs:
